@@ -2,39 +2,37 @@ import csv
 from math import sqrt
 from math import pi
 from math import exp
+import statistics
+import itertools
+from sklearn.model_selection import train_test_split
 
 # data prep
 def loadDataset(filePath):
-    dataset = list()
+    X = list()
+    Y = list()
     with open(filePath) as csvFile:
         datasetReader = csv.reader(csvFile, delimiter=',')
         for row in datasetReader:
             if not row:
                 continue
-            formated = list(map(float, row[:-1])) + [row[-1]]
-            dataset.append(formated)
-    return dataset
+            X.append(list(map(float, row[:-1])))
+            Y.append(row[-1])
+    return (X, Y)
 
-def splitDatasetByClassKey(datasetRows):
+def splitDatasetByClassKey(x_train, y_train):
     dataset = dict()
-    for row in datasetRows:
-        if row[-1] not in dataset.keys():
-            dataset[row[-1]] = list()
-        dataset[row[-1]].append(row[:-1])
+    for xy in itertools.zip_longest(x_train, y_train):
+        if xy[-1] not in dataset.keys():
+            dataset[xy[-1]] = list()
+        dataset[xy[-1]].append(xy[0])
     return dataset
 
 # data loaded
-csvRows = loadDataset(r'C:\Users\sikor\żeluś\archive\flowers.csv')
-dataset = splitDatasetByClassKey(csvRows)
+X, Y = loadDataset(r'C:\Users\sikor\archive\flowers.csv')
 
-# get statistics from data columns
-def mean(numbers):
- return sum(numbers)/float(len(numbers))
+x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.5)
 
-def stdev(numbers):
- avg = mean(numbers)
- variance = sum([(x-avg)**2 for x in numbers]) / float(len(numbers)-1)
- return sqrt(variance)
+trainDataset = splitDatasetByClassKey(x_train, y_train)
 
 def getMeanStdLenForColumns(dataset):
  summaries = list() 
@@ -42,12 +40,12 @@ def getMeanStdLenForColumns(dataset):
     if any(isinstance(t, str) for t in column):
        continue
     summaries.append(
-       [mean(column), stdev(column), len(column)]
+       [statistics.mean(column), statistics.stdev(column), len(column)]
     )
  return summaries
 
 meanStdLenByClass = dict()
-for (classKey, data) in dataset.items():
+for (classKey, data) in trainDataset.items():
    meanStdLenByClass[classKey] = getMeanStdLenForColumns(data)
 
 # used to calculate P(feature) from Gaussian distribution
@@ -70,6 +68,12 @@ def calculate_class_probabilities(summaries, row):
 
     return probabilities
 
-probabilities = calculate_class_probabilities(meanStdLenByClass, csvRows[0])          
+# model accuracy
+classMismatch = 0
+for xy in itertools.zip_longest(x_test, y_test):
+    probabilities = calculate_class_probabilities(meanStdLenByClass, xy[:-1][0])  
+    keyWithMax = max(probabilities, key=probabilities.get)
+    if keyWithMax != xy[-1]:
+       classMismatch+=1
 
-input()
+print(f'Model accuracy: {len(x_test) - classMismatch}/{len(x_test)}')
