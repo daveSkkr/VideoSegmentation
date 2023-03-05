@@ -69,8 +69,8 @@ class NaiveBayes:
         return (self._k + numWordInHam) / ((2 * self._k) + self._num_ham_messages)
 
     # P(class|Message) = P(class) * Product(P(word | Spam))
-    def isSpamMessage(self, text: str) -> bool:
-        text_words: set[str] = tokenize(text)
+    def isSpamMessage(self, msgText: str) -> bool:
+        text_words: set[str] = tokenize(msgText)
         log_p_spam: float = 0.0
         log_p_ham: float = 0.0
 
