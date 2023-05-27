@@ -14,10 +14,12 @@ from cityScapesDataset import get_loaders
 from labelingUtils import trainId2label as t2l
 import numpy as np
 from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
 
 learning_rate = 1e-4
 device = 'cuda' if torch.cuda.is_available() else'cpu'
-batch_size = 32
+batch_size_train = 32
+batch_size_val= 8
 num_workers = 12
 
 pin_memory = True
@@ -33,6 +35,38 @@ color_array = np.random.choice(range(256), 3*num_items).reshape(-1, 3)
 
 label_model = KMeans(n_clusters=num_classes)
 label_model.fit(color_array)
+
+
+def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
+	step_losses = []
+	epoch_losses = []
+
+	for epoch in tqdm(range(epochs)):
+		epoch_loss = 0
+
+		for X, Y in tqdm(train_loader, total=len(train_loader), leave=False):
+			X, Y = X.to(device), Y.to(device)
+			optimizer.zero_grad()
+
+			with torch.cuda.amp.autocast():
+				predictions = model(X)
+				loss = loss_fn(predictions, Y)
+
+			loss.backward()
+			optimizer.step()
+			epoch_loss += loss.item()
+			step_losses.append(loss.item())
+
+		epoch_losses.append(epoch_loss)
+
+		# save
+		# check accuracy
+		checkpoint = {
+			'state_dic': model.state_dict(),
+			'optimizer': optimizer.state_dict(),
+		}
+
+		save_checkpoint(checkpoint)
 
 def main():
 	train_transform = A.Compose(
@@ -50,66 +84,47 @@ def main():
 
 	optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 	loss_fn = nn.CrossEntropyLoss(ignore_index=255)
+	scaler = torch.cuda.amp.GradScaler()
 
 	train_loader, val_loader = get_loaders(
 		train_img_dir,
 		val_img_dir,
-		batch_size,
+		batch_size_train,
+		batch_size_val,
 		train_transform,
 		val_transforms,
 		pin_memory,
 	)
 
-	scaler = torch.cuda.amp.GradScaler()
-	# train
-	for epoch in tqdm(range(12)):
-		epoch_loss = 0
+	# train(model, optimizer, loss_fn, scaler, 12, train_loader)
 
-		for X, Y in tqdm(train_loader, total=len(train_loader), leave=False):
-			X, Y = X.to(device), Y.to(device)
-			optimizer.zero_grad()
+	model.load_state_dict(
+		torch.load(r"C:\Users\sikor\ground\ML_playground\unet\my_checkpoint.pth.tar"))
+	model.eval()
 
-			with torch.cuda.amp.autocast():
-				predictions = model(X)
-				loss = loss_fn(predictions, Y)
+	# check predictions for batch
+	X, Y = next(iter(val_loader))
+	X, Y = X.to(device), Y.to(device)
+	Y_pred = model(X)
+	print(Y_pred.shape)
+	Y_pred = torch.argmax(Y_pred, dim=1)
+	print(Y_pred.shape)
 
-			loss.backward()
-			optimizer.step()
-			epoch_loss += loss.item()
-			step_losses.append(loss.item())
+	fig, axes = plt.subplots(batch_size_val, 3, figsize=(3 * 5, batch_size_val * 5))
 
-		# save
-		# check accuracy
-		checkpoint = {
-			'state_dic': model.state_dict(),
-			'optimizer': optimizer.state_dict(),
-		}
+	for i in range(batch_size_val):
+		landscape = X[i].permute(1, 2, 0).cpu().detach().numpy()
+		label_class = Y[i].cpu().detach().numpy()
+		label_class_predicted = Y_pred[i].cpu().detach().numpy()
 
-		# save_checkpoint(checkpoint)
+		axes[i, 0].imshow(landscape)
+		axes[i, 0].set_title("Landscape")
+		axes[i, 1].imshow(label_class)
+		axes[i, 1].set_title("Label Class")
+		axes[i, 2].imshow(label_class_predicted)
+		axes[i, 2].set_title("Label Class - Predicted")
 
-		# check_accuracy(val_loader, model, device=device)
-
-		# save predictions
-		X, Y = next(iter(val_loader))
-		X, Y = X.to(device), Y.to(device)
-		Y_pred = model(X)
-		print(Y_pred.shape)
-		Y_pred = torch.argmax(Y_pred, dim=1)
-		print(Y_pred.shape)
-
-		fig, axes = plt.subplots(test_batch_size, 3, figsize=(3 * 5, test_batch_size * 5))
-
-		for i in range(test_batch_size):
-			landscape = X[i].permute(1, 2, 0).cpu().detach().numpy()
-			label_class = Y[i].cpu().detach().numpy()
-			label_class_predicted = Y_pred[i].cpu().detach().numpy()
-
-			axes[i, 0].imshow(landscape)
-			axes[i, 0].set_title("Landscape")
-			axes[i, 1].imshow(label_class)
-			axes[i, 1].set_title("Label Class")
-			axes[i, 2].imshow(label_class_predicted)
-			axes[i, 2].set_title("Label Class - Predicted")
+	plt.show()
 
 if __name__ == '__main__':
 	main()
