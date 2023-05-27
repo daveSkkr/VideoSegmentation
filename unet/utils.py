@@ -2,6 +2,8 @@ import torch
 import torchvision
 from cityScapesDataset import CityScapesDataset
 from torch.utils.data import DataLoader
+import numpy as np
+from PIL import Image
 
 device = 'cuda' if torch.cuda.is_available() else'cpu'
 def save_checkpoint(state, filename="my_checkpoint.pth.tar"):
@@ -12,43 +14,34 @@ def load_checkpoint(checkpoint, model):
     print("=> Loading checkpoint")
     model.load_state_dict(checkpoint["state_dict"])
 
-def check_accuracy(loader, model, device):
-    num_correct = 0
-    num_pixels = 0
-    dice_score = 0
-    model.eval()
-
-    with torch.no_grad():
-        for x, y in loader:
-            x = x.to(device)
-            y = y.to(device).unsqueeze(1)
-            preds = torch.sigmoid(model(x))
-            preds = (preds > 0.5).float()
-            num_correct += (preds == y).sum()
-            num_pixels += torch.numel(preds)
-            dice_score += (2 * (preds * y).sum()) / (
-                (preds + y).sum() + 1e-8
-            )
-
-    print(
-        f"Got {num_correct}/{num_pixels} with acc {num_correct/num_pixels*100:.2f}"
-    )
-    print(f"Dice score: {dice_score/len(loader)}")
-    model.train()
-
-
 def save_predictions_as_imgs(
-    loader, model, folder="saved_images/", device="cuda"
+    loader, model, inverse_transform, folder="saved_images/", device="cuda"
 ):
     model.eval()
     for idx, (x, y) in enumerate(loader):
-        x = x.to(device=device)
-        with torch.no_grad():
-            preds = torch.sigmoid(model(x))
-            preds = (preds > 0.5).float()
-        torchvision.utils.save_image(
-            preds, f"{folder}/pred_{idx}.png"
-        )
-        torchvision.utils.save_image(y.unsqueeze(1), f"{folder}{idx}.png")
 
-    model.train()
+        x, y = x.to(device), y.to(device)
+        predictions = model(x)
+
+        predictions = torch.nn.functional.softmax(predictions, dim=1)
+        pred_labels = torch.argmax(predictions, dim=1)
+        pred_labels = pred_labels.float()
+
+        # Remapping the labels
+        pred_labels = pred_labels.to('cpu')
+        pred_labels.apply_(lambda x: trainId2label[x].id)
+        pred_labels = pred_labels.to(device)
+
+        # Resizing predicted images too original size
+        pred_labels = transforms.Resize((1024, 2048))(pred_labels)
+
+        # Configure filename & location to save predictions as images
+        s = str(s)
+        pos = s.rfind('/', 0, len(s))
+        name = s[pos + 1:-18]
+
+
+        global location
+        location = 'saved_images\multiclass_1'
+
+        utils.save_as_images(pred_labels, location, name, multiclass=True)
