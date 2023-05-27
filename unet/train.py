@@ -77,7 +77,7 @@ def main():
 	model = UNETScapes(in_channels=3, out_channels=19, features= [64,128,256,512]).to(device)
 
 	optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-	loss_fn = nn.CrossEntropyLoss(ignore_index=255)
+	loss_fn = nn.CrossEntropyLoss()
 	scaler = torch.cuda.amp.GradScaler()
 
 	train_loader, val_loader = get_loaders(
@@ -90,10 +90,10 @@ def main():
 		pin_memory,
 	)
 
-	train(model, optimizer, loss_fn, scaler, 12, train_loader)
+	#train(model, optimizer, loss_fn, scaler, 100, train_loader)
 
-	#model.load_state_dict(torch.load(checkpoint_path))
-	#model.eval()
+	model.load_state_dict(torch.load(checkpoint_path))
+	model.eval()
 
 	# check predictions for batch
 	X, Y = next(iter(val_loader))
@@ -118,6 +118,8 @@ def main():
 		axes[i, 2].set_title("Label Class - Predicted")
 
 	plt.show()
+
+	input()
 
 if __name__ == '__main__':
 	main()
