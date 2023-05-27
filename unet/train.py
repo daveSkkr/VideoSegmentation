@@ -28,6 +28,7 @@ LEARNING_RATE = 0.0005
 
 train_img_dir = '../data/cityscapes_data/train'
 val_img_dir = '../data/cityscapes_data/val'
+checkpoint_path = r"./my_checkpoint.pth.tar"
 
 num_items = 1000
 num_classes = 10
@@ -59,14 +60,7 @@ def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
 
 		epoch_losses.append(epoch_loss)
 
-		# save
-		# check accuracy
-		checkpoint = {
-			'state_dic': model.state_dict(),
-			'optimizer': optimizer.state_dict(),
-		}
-
-		save_checkpoint(checkpoint)
+		torch.save(model.state_dict(), checkpoint_path)
 
 def main():
 	train_transform = A.Compose(
@@ -96,11 +90,10 @@ def main():
 		pin_memory,
 	)
 
-	# train(model, optimizer, loss_fn, scaler, 12, train_loader)
+	train(model, optimizer, loss_fn, scaler, 12, train_loader)
 
-	model.load_state_dict(
-		torch.load(r"C:\Users\sikor\ground\ML_playground\unet\my_checkpoint.pth.tar"))
-	model.eval()
+	#model.load_state_dict(torch.load(checkpoint_path))
+	#model.eval()
 
 	# check predictions for batch
 	X, Y = next(iter(val_loader))
