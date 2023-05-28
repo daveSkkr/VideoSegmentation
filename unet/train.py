@@ -24,8 +24,7 @@ batch_size_val= 8
 num_workers = 12
 
 pin_memory = True
-load_model = False
-LEARNING_RATE = 0.0005
+LEARNING_RATE = 0.001
 
 train_img_dir = '../data/cityscapes_data/train'
 val_img_dir = '../data/cityscapes_data/val'
@@ -37,7 +36,6 @@ color_array = np.random.choice(range(256), 3*num_items).reshape(-1, 3)
 
 label_model = KMeans(n_clusters=num_classes)
 label_model.fit(color_array)
-
 
 def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
 	step_losses = []
@@ -62,6 +60,10 @@ def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
 		epoch_losses.append(epoch_loss)
 
 		torch.save(model.state_dict(), checkpoint_path)
+
+	fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+	axes[0].plot(step_losses)
+	axes[1].plot(epoch_losses)
 
 def show_predictions_plot(model, val_loader, inverse_transforms):
 
@@ -97,8 +99,8 @@ def main():
 		transforms.Normalize((-0.485/0.229, -0.456/0.224, -0.406/0.225), (1/0.229, 1/0.224, 1/0.225))
 	])
 
-	# 19 classes = 19 channels
-	model = UNETScapes(in_channels=3, out_channels=19, features= [64,128,256,512]).to(device)
+	# 10 classes = 10 channels
+	model = UNETScapes(in_channels=3, out_channels=10, features= [64,128,256,512]).to(device)
 
 	optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 	loss_fn = nn.CrossEntropyLoss()
@@ -113,10 +115,10 @@ def main():
 		pin_memory,
 	)
 
-	#train(model, optimizer, loss_fn, scaler, 100, train_loader)
+	train(model, optimizer, loss_fn, scaler, 3, train_loader)
 
-	model.load_state_dict(torch.load(checkpoint_path))
-	model.eval()
+	#model.load_state_dict(torch.load(checkpoint_path))
+	#model.eval()
 
 	# check predictions for batch
 	show_predictions_plot(model, val_loader, input_transforms_inverse)
