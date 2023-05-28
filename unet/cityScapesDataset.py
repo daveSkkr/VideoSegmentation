@@ -32,10 +32,8 @@ class CityScapesDataset(Dataset):
         imgPath = os.path.join(self.image_dir, self.images[index])
         image, mask = self.split_image_pairs(imgPath)
 
-        #if self.transform is not None:
-            #augmentations = self.transform(image=image, mask=mask)
-            #image = augmentations["image"]
-            #mask = augmentations["mask"]
+        if self.transform is not None:
+            image = self.transform(image)
 
         # mask = mask.numpy()
         # mask = np.transpose(mask, (2, 0, 1))
@@ -52,20 +50,20 @@ class CityScapesDataset(Dataset):
 
         mask_classes  = torch.Tensor(mask_classes).long()
 
-        return torch.Tensor(np.transpose(image, (2, 0, 1))), mask_classes
+        return image.float(), mask_classes
 
 def get_loaders(
     train_dir,
     val_dir,
     batch_size_train,
     batch_size_val,
-    train_transform,
+    transforms,
     val_transform,
     pin_memory=True,
 ):
     train_ds = CityScapesDataset(
         imagesDir=train_dir,
-        transform=train_transform,
+        transform=transforms,
     )
 
     train_loader = DataLoader(
@@ -77,7 +75,7 @@ def get_loaders(
 
     val_ds = CityScapesDataset(
         imagesDir=train_dir,
-        transform=val_transform,
+        transform=transforms,
     )
 
     val_loader = DataLoader(
