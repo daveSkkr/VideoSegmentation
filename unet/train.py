@@ -11,19 +11,19 @@ from utils import(
 	save_predictions_as_imgs,
 	)
 from cityScapesDataset import get_loaders
-from labelingUtils import trainId2label as t2l
 import numpy as np
+from labelingUtils import labels
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 from torchvision import transforms
+import gc
 
-learning_rate = 1e-4
 device = 'cuda' if torch.cuda.is_available() else'cpu'
 batch_size_train = 32
-batch_size_val= 8
-num_workers = 12
+batch_size_val = 3
+epochs = 4
 
-pin_memory = True
+pin_memory = False
 LEARNING_RATE = 0.001
 
 train_img_dir = '../data/cityscapes_data/train'
@@ -31,13 +31,17 @@ val_img_dir = '../data/cityscapes_data/val'
 checkpoint_path = r"./my_checkpoint.pth.tar"
 
 num_items = 1000
-num_classes = 10
+num_classes = 35
 color_array = np.random.choice(range(256), 3*num_items).reshape(-1, 3)
 
 label_model = KMeans(n_clusters=num_classes)
 label_model.fit(color_array)
 
 def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
+
+	gc.collect()
+	torch.cuda.empty_cache()
+
 	step_losses = []
 	epoch_losses = []
 
@@ -54,6 +58,9 @@ def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
 
 			loss.backward()
 			optimizer.step()
+
+			torch.cuda.empty_cache()
+
 			epoch_loss += loss.item()
 			step_losses.append(loss.item())
 
@@ -73,7 +80,7 @@ def show_predictions_plot(model, val_loader, inverse_transforms):
 	print(Y_pred.shape)
 	Y_pred = torch.argmax(Y_pred, dim=1)
 	print(Y_pred.shape)
-	fig, axes = plt.subplots(batch_size_val, 3, figsize=(3 * 5, batch_size_val * 5))
+	fig, axes = plt.subplots(batch_size_val, 3, figsize=(3 * 5, 5 * 5))
 
 	for i in range(batch_size_val):
 		landscape = inverse_transforms(X[i]).permute(1, 2, 0).cpu().detach().long().numpy()
@@ -90,17 +97,19 @@ def show_predictions_plot(model, val_loader, inverse_transforms):
 
 def main():
 
+	idTocolor = {label.id: np.asarray(label.color) for label in labels}
+
 	input_transforms = transforms.Compose([
-			transforms.ToTensor(),
-			transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+			#transforms.ToTensor(),
+			#transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
 		])
 
 	input_transforms_inverse = transforms.Compose([
-		transforms.Normalize((-0.485/0.229, -0.456/0.224, -0.406/0.225), (1/0.229, 1/0.224, 1/0.225))
+		#transforms.Normalize((-0.485/0.229, -0.456/0.224, -0.406/0.225), (1/0.229, 1/0.224, 1/0.225))
 	])
 
 	# 10 classes = 10 channels
-	model = UNETScapes(in_channels=3, out_channels=10, features= [64,128,256,512]).to(device)
+	model = UNETScapes(in_channels=3, out_channels=num_classes, features= [64,128,256,512]).to(device)
 
 	optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 	loss_fn = nn.CrossEntropyLoss()
@@ -115,7 +124,7 @@ def main():
 		pin_memory,
 	)
 
-	train(model, optimizer, loss_fn, scaler, 3, train_loader)
+	train(model, optimizer, loss_fn, scaler, epochs, train_loader)
 
 	#model.load_state_dict(torch.load(checkpoint_path))
 	#model.eval()

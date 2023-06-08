@@ -1,15 +1,4 @@
-#!/usr/bin/python
-#
-# Cityscapes labels
-#
-
-from __future__ import print_function, absolute_import, division
 from collections import namedtuple
-
-
-#--------------------------------------------------------------------------------
-# Definitions
-#--------------------------------------------------------------------------------
 
 # a label and all meta information
 Label = namedtuple( 'Label' , [
@@ -21,19 +10,14 @@ Label = namedtuple( 'Label' , [
                     # The IDs are used to represent the label in ground truth images
                     # An ID of -1 means that this label does not have an ID and thus
                     # is ignored when creating ground truth images (e.g. license plate).
-                    # Do not modify these IDs, since exactly these IDs are expected by the
-                    # evaluation server.
 
-    'trainId'     , # Feel free to modify these IDs as suitable for your method. Then create
-                    # ground truth images with train IDs, using the tools provided in the
-                    # 'preparation' folder. However, make sure to validate or submit results
-                    # to our evaluation server using the regular IDs above!
-                    # For trainIds, multiple labels might have the same ID. Then, these labels
+    'trainId'     , # An integer ID that overwrites the ID above, when creating ground truth
+                    # images for training.
+                    # For training, multiple labels might have the same ID. Then, these labels
                     # are mapped to the same class in the ground truth images. For the inverse
                     # mapping, we use the label that is defined first in the list below.
                     # For example, mapping all void-type classes to the same ID in training,
                     # might make sense for some approaches.
-                    # Max value is 255!
 
     'category'    , # The name of the category that this label belongs to
 
@@ -57,10 +41,10 @@ labels = [
     Label(  'static'               ,  4 ,      255 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
     Label(  'dynamic'              ,  5 ,      255 , 'void'            , 0       , False        , True         , (111, 74,  0) ),
     Label(  'ground'               ,  6 ,      255 , 'void'            , 0       , False        , True         , ( 81,  0, 81) ),
-    Label(  'road'                 ,  7 ,        0 , 'flat'            , 1       , False        , False        , (128, 64,128) ),
-    Label(  'sidewalk'             ,  8 ,        1 , 'flat'            , 1       , False        , False        , (244, 35,232) ),
-    Label(  'parking'              ,  9 ,      255 , 'flat'            , 1       , False        , True         , (250,170,160) ),
-    Label(  'rail track'           , 10 ,      255 , 'flat'            , 1       , False        , True         , (230,150,140) ),
+    Label(  'road'                 ,  7 ,        0 , 'ground'          , 1       , False        , False        , (128, 64,128) ),
+    Label(  'sidewalk'             ,  8 ,        1 , 'ground'          , 1       , False        , False        , (244, 35,232) ),
+    Label(  'parking'              ,  9 ,      255 , 'ground'          , 1       , False        , True         , (250,170,160) ),
+    Label(  'rail track'           , 10 ,      255 , 'ground'          , 1       , False        , True         , (230,150,140) ),
     Label(  'building'             , 11 ,        2 , 'construction'    , 2       , False        , False        , ( 70, 70, 70) ),
     Label(  'wall'                 , 12 ,        3 , 'construction'    , 2       , False        , False        , (102,102,156) ),
     Label(  'fence'                , 13 ,        4 , 'construction'    , 2       , False        , False        , (190,153,153) ),
@@ -84,57 +68,5 @@ labels = [
     Label(  'train'                , 31 ,       16 , 'vehicle'         , 7       , True         , False        , (  0, 80,100) ),
     Label(  'motorcycle'           , 32 ,       17 , 'vehicle'         , 7       , True         , False        , (  0,  0,230) ),
     Label(  'bicycle'              , 33 ,       18 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
-    Label(  'license plate'        , -1 ,       -1 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
+    Label(  'license plate'        , 34 ,       19 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
 ]
-
-
-#--------------------------------------------------------------------------------
-# Create dictionaries for a fast lookup
-#--------------------------------------------------------------------------------
-
-# Please refer to the main method below for example usages!
-
-# name to label object
-name2label      = { label.name    : label for label in labels           }
-# id to label object
-id2label        = { label.id      : label for label in labels           }
-# trainId to label object
-trainId2label   = { label.trainId : label for label in reversed(labels) }
-# category to list of label objects
-category2labels = {}
-for label in labels:
-    category = label.category
-    if category in category2labels:
-        category2labels[category].append(label)
-    else:
-        category2labels[category] = [label]
-
-#--------------------------------------------------------------------------------
-# Assure single instance name
-#--------------------------------------------------------------------------------
-
-# returns the label name that describes a single instance (if possible)
-# e.g.     input     |   output
-#        ----------------------
-#          car       |   car
-#          cargroup  |   car
-#          foo       |   None
-#          foogroup  |   None
-#          skygroup  |   None
-def assureSingleInstanceName( name ):
-    # if the name is known, it is not a group
-    if name in name2label:
-        return name
-    # test if the name actually denotes a group
-    if not name.endswith("group"):
-        return None
-    # remove group
-    name = name[:-len("group")]
-    # test if the new name exists
-    if not name in name2label:
-        return None
-    # test if the new name denotes a label that actually has instances
-    if not name2label[name].hasInstances:
-        return None
-    # all good then
-    return name
