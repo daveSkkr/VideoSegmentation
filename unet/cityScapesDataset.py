@@ -42,16 +42,17 @@ class CityScapesDataset(Dataset):
         # mask_classes = mask_classes.reshape(256, 256) # prediction model into original shape 2D
 
         mask_classes = self.find_closest_labels_vectorized(mask).astype(float)
-        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-        axes[0].imshow(image)
-        axes[1].imshow(mask)
-        axes[2].imshow(mask_classes) # Show 2D with values as classes
-        plt.show()
 
-        image = torch.Tensor(image)
+        #fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        #axes[0].imshow(image)
+        #axes[1].imshow(mask)
+        #axes[2].imshow(mask_classes) # Show 2D with values as classes
+        #plt.show()
+
+        image = torch.Tensor(np.transpose(image, (2, 0, 1)))
         mask_classes  = torch.Tensor(mask_classes).long()
 
-        return image.float(), mask_classes
+        return (image, mask_classes)
 
     def find_closest_labels_vectorized(self, mask):
         # 'mapping' is a RGB color tuple to categorical number dictionary

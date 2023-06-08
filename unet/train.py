@@ -21,10 +21,10 @@ import gc
 device = 'cuda' if torch.cuda.is_available() else'cpu'
 batch_size_train = 32
 batch_size_val = 3
-epochs = 4
+epochs = 3
 
 pin_memory = False
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0005
 
 train_img_dir = '../data/cityscapes_data/train'
 val_img_dir = '../data/cityscapes_data/val'
