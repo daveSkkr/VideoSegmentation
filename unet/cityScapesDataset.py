@@ -1,5 +1,5 @@
 import os.path
-
+from tqdm import tqdm
 from torch.utils.data import Dataset
 from PIL import Image
 import numpy as np
@@ -11,62 +11,68 @@ from sklearn.cluster import KMeans
 from labelingUtils import labels
 
 class CityScapesDataset(Dataset):
-    def __init__(self, imagesDir, transform=None):
-        self.image_dir = imagesDir
+    def __init__(self, imagesDir, transform=None, target_transform =None):
         self.transform = transform
+        self.target_transform = target_transform
+        self.image_dir = imagesDir
         self.images = os.listdir(imagesDir)
+        self.idTocolor = [np.asarray(label.color) for label in labels]
 
-        self.num_classes = 10
-        self.label_model = KMeans(n_clusters=self.num_classes)
-        self.color_array = np.random.choice(range(256), 3*256).reshape(-1, 3)
-        self.label_model.fit(self.color_array)
-        self.idTocolor = {label.id: np.asarray(label.color) for label in labels}
+        self.X = []
+        self.Y = []
+
+        self.load_images()
+
+    # load dataset into RAM, due to rational size to speed up computation
+    def load_images(self):
+        for imagePath in tqdm(self.images):
+            raw, classes = self.preprocess_image(os.path.join(self.image_dir, imagePath))
+            self.X.append(torch.Tensor(raw / 255.).permute(2, 0, 1))
+            self.Y.append(torch.Tensor(classes))
+
+    def visualizeBatch(self, batchSize):
+        fig, axes = plt.subplots(batchSize, 2, figsize=(4, 2. * batchSize), squeeze=True)
+        fig.subplots_adjust(hspace=0.0, wspace=0.0)
+
+        for i in range(batchSize):
+            img, mask = self.X[i], self.Y[i]
+            # print(img.shape, mask.shape)
+            axes[i, 0].imshow(img.permute(1, 2, 0))
+            axes[i, 0].set_xticks([])
+            axes[i, 0].set_yticks([])
+
+            axes[i, 1].imshow(mask, cmap='magma')
+            axes[i, 1].set_xticks([])
+            axes[i, 1].set_yticks([])
+
+    def preprocess_image(self, imagePath):
+        raw, mask = self.split_image_pairs(imagePath)
+        height, width, channels = mask.shape
+
+        # compute then the sum of squared distances for each pixel to the colors (L2 between the color and pixel data) :
+        # the value which will be the minimal is the category name we will use for that pixel, and we will get it using argmin
+        distances = np.sum((mask.reshape(-1, channels)[:, np.newaxis, :] - self.idTocolor) ** 2, axis=2)
+        classes = np.argmin(distances, axis=1).reshape(height, width)
+
+        return (raw, classes)
+
+    def split_image_pairs(self, imagePairPath):
+        image = np.array(Image.open(imagePairPath))
+        raw, mask = image[:, :256, :], image[:, 256:, :]
+        return raw, mask
 
     def __len__(self):
         return len(self.images)
 
-    def split_image_pairs(self, imagePairPath):
-        image = np.array(Image.open(imagePairPath).convert('RGB'))
-        cityscape, label = image[:, :256, :], image[:, 256:, :]
-        return cityscape, label
+    def __getitem__(self, idx):
+        x, y = self.X[idx], self.Y[idx]
 
-    def __getitem__(self, index):
-        imgPath = os.path.join(self.image_dir, self.images[index])
-        image, mask = self.split_image_pairs(imgPath)
+        if self.transform:
+            x = self.transform(x)
+        if self.target_transform:
+            y = self.target_transform(y)
 
-        if self.transform is not None:
-            image = self.transform(image)
-
-        # mask_classes = self.label_model.predict(mask.reshape(-1, 3)) # flatten 3D into 2D & pass to prediction model
-        # Clustering pixel values mask 2D into classes values 2D
-        # mask_classes = mask_classes.reshape(256, 256) # prediction model into original shape 2D
-
-        mask_classes = self.find_closest_labels_vectorized(mask).astype(float)
-
-        #fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-        #axes[0].imshow(image)
-        #axes[1].imshow(mask)
-        #axes[2].imshow(mask_classes) # Show 2D with values as classes
-        #plt.show()
-
-        image = torch.Tensor(np.transpose(image, (2, 0, 1)))
-        mask_classes  = torch.Tensor(mask_classes).long()
-
-        return (image, mask_classes)
-
-    def find_closest_labels_vectorized(self, mask):
-        # 'mapping' is a RGB color tuple to categorical number dictionary
-
-        closest_distance = np.full([mask.shape[0], mask.shape[1]], 10000)
-        closest_category = np.full([mask.shape[0], mask.shape[1]], None)
-
-        for id, color in self.idTocolor.items():  # iterate over every color mapping
-            dist = np.sqrt(np.linalg.norm(mask - color.reshape([1, 1, -1]), axis=-1))
-            is_closer = closest_distance > dist
-            closest_distance = np.where(is_closer, dist, closest_distance)
-            closest_category = np.where(is_closer, id, closest_category)
-
-        return closest_category
+        return x , y
 
 def get_loaders(
     train_dir,
@@ -90,15 +96,15 @@ def get_loaders(
     )
 
     val_ds = CityScapesDataset(
-        imagesDir=train_dir,
-        transform=transforms,
+        imagesDir=val_dir,
+        transform=None,
     )
 
     val_loader = DataLoader(
         val_ds,
-        batch_size=batch_size_val,
+        batch_size=batch_size_train,
         pin_memory=pin_memory,
-        shuffle=False,
+        shuffle=True,
     )
 
     return train_loader, val_loader

@@ -4,44 +4,29 @@ from cityScapesDataset import CityScapesDataset
 from torch.utils.data import DataLoader
 import numpy as np
 from PIL import Image
+from torch import Tensor
 
-device = 'cuda' if torch.cuda.is_available() else'cpu'
-def save_checkpoint(state, filename="my_checkpoint.pth.tar"):
-    print("=> Saving checkpoint")
-    torch.save(state, filename)
+def dice_coeff(input: Tensor, target: Tensor, reduce_batch_first: bool = False, epsilon: float = 1e-6):
+    # Average of Dice coefficient for all batches, or for a single mask
+    assert input.size() == target.size()
+    assert input.dim() == 3 or not reduce_batch_first
 
-def load_checkpoint(checkpoint, model):
-    print("=> Loading checkpoint")
-    model.load_state_dict(checkpoint["state_dict"])
+    sum_dim = (-1, -2) if input.dim() == 2 or not reduce_batch_first else (-1, -2, -3)
 
-def save_predictions_as_imgs(
-    loader, model, inverse_transform, folder="saved_images/", device="cuda"
-):
-    model.eval()
-    for idx, (x, y) in enumerate(loader):
+    inter = 2 * (input * target).sum(dim=sum_dim)
+    sets_sum = input.sum(dim=sum_dim) + target.sum(dim=sum_dim)
+    sets_sum = torch.where(sets_sum == 0, inter, sets_sum)
 
-        x, y = x.to(device), y.to(device)
-        predictions = model(x)
-
-        predictions = torch.nn.functional.softmax(predictions, dim=1)
-        pred_labels = torch.argmax(predictions, dim=1)
-        pred_labels = pred_labels.float()
-
-        # Remapping the labels
-        pred_labels = pred_labels.to('cpu')
-        pred_labels.apply_(lambda x: trainId2label[x].id)
-        pred_labels = pred_labels.to(device)
-
-        # Resizing predicted images too original size
-        pred_labels = transforms.Resize((1024, 2048))(pred_labels)
-
-        # Configure filename & location to save predictions as images
-        s = str(s)
-        pos = s.rfind('/', 0, len(s))
-        name = s[pos + 1:-18]
+    dice = (inter + epsilon) / (sets_sum + epsilon)
+    return dice.mean()
 
 
-        global location
-        location = 'saved_images\multiclass_1'
+def multiclass_dice_coeff(input: Tensor, target: Tensor, reduce_batch_first: bool = False, epsilon: float = 1e-6):
+    # Average of Dice coefficient for all classes
+    return dice_coeff(input.flatten(0, 1), target.flatten(0, 1), reduce_batch_first, epsilon)
 
-        utils.save_as_images(pred_labels, location, name, multiclass=True)
+
+def dice_loss(input: Tensor, target: Tensor, multiclass: bool = False):
+    # Dice loss (objective to minimize) between 0 and 1
+    fn = multiclass_dice_coeff if multiclass else dice_coeff
+    return 1 - fn(input, target, reduce_batch_first=True)
