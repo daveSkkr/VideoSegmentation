@@ -1,32 +1,33 @@
 import torch
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
 from models import UNETScapes
 from cityScapesDataset import get_loaders
 import numpy as np
-from labelingUtils import labels
-from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 from torchvision import transforms
 import gc
 from cityScapesDataset import CityScapesDataset
+from utils import show_predictions_sample_plot
+import os.path
+from PIL import Image
+
+from torch.utils.data import DataLoader
 
 device = 'cuda' if torch.cuda.is_available() else'cpu'
 batch_size_train = 8
-batch_size_val = 3
-epochs = 25
+batch_size_val = 9
+epochs = 20
 
 pin_memory = False
 LEARNING_RATE = 1e-4
 
 train_img_dir = '../data/cityscapes_data/train'
 val_img_dir = '../data/cityscapes_data/val'
+evaluate_img_dir = r'../data/val'
 checkpoint_path = r"./my_checkpoint.pth.tar"
 
-num_items = 1000
 num_classes = 35
 
 def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
@@ -62,32 +63,23 @@ def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
 	axes[0].plot(step_losses)
 	axes[1].plot(epoch_losses)
 
-def show_predictions_sample_plot(model, val_loader, inverse_transforms):
+def showImagesToEvaluate():
+	imagesToValue = os.listdir(evaluate_img_dir)
 
-	X, Y = next(iter(val_loader))
-	X, Y = X.to(device), Y.to(device)
-	Y_pred = model(X)
-	print(Y_pred.shape)
-	Y_pred = torch.argmax(Y_pred, dim=1)
-	print(Y_pred.shape)
-	fig, axes = plt.subplots(batch_size_val, 3, figsize=(3 * 5, 5 * 5))
+	images = [np.array(Image.open(os.path.join(evaluate_img_dir, imagePath))) for imagePath in imagesToValue]
 
-	for i in range(batch_size_val):
-		landscape = inverse_transforms(X[i]).permute(1, 2, 0).cpu().detach().numpy()
-		label_class = Y[i].cpu().detach().numpy()
-		label_class_predicted = Y_pred[i].cpu().detach().numpy()
+	fig, axes = plt.subplots(images.__len__(), 1, figsize=(10, 4. * images.__len__()), squeeze=True)
+	fig.subplots_adjust(hspace=0.0, wspace=0.0)
 
-		axes[i, 0].imshow(landscape)
-		axes[i, 0].set_title("Landscape")
-		axes[i, 1].imshow(label_class)
-		axes[i, 1].set_title("Label Class")
-		axes[i, 2].imshow(label_class_predicted)
-		axes[i, 2].set_title("Label Class - Predicted")
+	for i in range(images.__len__()):
+		axes[i].imshow(images[i])
+		axes[i].set_xticks([])
+		axes[i].set_yticks([])
+
 	plt.show()
 
 def main():
-
-	idTocolor = {label.id: np.asarray(label.color) for label in labels}
+	showImagesToEvaluate()
 
 	input_transforms = transforms.Compose([
 			transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
@@ -106,11 +98,23 @@ def main():
 
 	train_loader, val_loader = get_loaders(
 		train_img_dir,
-		val_img_dir,
+		evaluate_img_dir,
 		batch_size_train,
 		batch_size_val,
 		input_transforms,
 		pin_memory,
+	)
+
+	val_ds = CityScapesDataset(
+		imagesDir=evaluate_img_dir,
+		transform=None,
+	)
+
+	val_loader = DataLoader(
+		val_ds,
+		batch_size=4,
+		pin_memory=pin_memory,
+		shuffle=False,
 	)
 
 	#model.load_state_dict(torch.load(checkpoint_path))
@@ -121,7 +125,7 @@ def main():
 	torch.save(model.state_dict(), checkpoint_path)
 
 	# check predictions for batch
-	show_predictions_sample_plot(model, val_loader, input_transforms_inverse)
+	show_predictions_sample_plot(model, val_loader, input_transforms_inverse, batch_size_val, device)
 
 	input()
 
