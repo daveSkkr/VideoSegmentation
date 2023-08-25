@@ -48,6 +48,7 @@ class UNETScapes(torch.nn.Module):
         self.finalConv = nn.Conv2d(features[0], out_channels, kernel_size=1)
 
     def forward(self, x):
+        
         skipConnections = []
 
         for down in self.downs:
@@ -63,14 +64,14 @@ class UNETScapes(torch.nn.Module):
             x = self.ups[idx](x)
             skipConn = skipConnections[idx//2]
 
-            if x.shape != skipConn.shape:
-                x = TF.resize(x, size = skipConn.shape[2:])
+            # if x.shape != skipConn.shape:
+            #     x = TF.resize(x, size = skipConn.shape[2:])
 
             concatSkip = torch.cat((skipConn, x), dim=1)
             x = self.ups[idx +1](concatSkip)
 
         return self.finalConv(x)
-
+    
 def test():
     x = torch.randn((3, 1, 161, 161)) # batch_size, channels, size
     model = UNETScapes(in_channels = 1, out_channels = 1, features = [64, 128, 256, 512])

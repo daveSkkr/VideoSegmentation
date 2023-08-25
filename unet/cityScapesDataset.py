@@ -5,18 +5,16 @@ from PIL import Image
 import numpy as np
 from torch.utils.data import DataLoader
 import torch
-import torchvision
 import matplotlib.pyplot as plt
-from sklearn.cluster import KMeans
-from labelingUtils import labels
+from DatasetLabeling import idx_to_category, idx_to_color
 
 class CityScapesDataset(Dataset):
+    
     def __init__(self, imagesDir, transform=None, target_transform =None):
         self.transform = transform
         self.target_transform = target_transform
         self.image_dir = imagesDir
         self.images = os.listdir(imagesDir)
-        self.idTocolor = [np.asarray(label.color) for label in labels]
 
         self.X = []
         self.Y = []
@@ -29,7 +27,11 @@ class CityScapesDataset(Dataset):
             raw, classes = self.preprocess_image(os.path.join(self.image_dir, imagePath))
             self.X.append(torch.Tensor(raw / 255.).permute(2, 0, 1))
             self.Y.append(torch.Tensor(classes))
-
+            
+        # self.visualizeBatch(4)
+        
+        return
+            
     def visualizeBatch(self, batchSize):
         fig, axes = plt.subplots(batchSize, 2, figsize=(4, 2. * batchSize), squeeze=True)
         fig.subplots_adjust(hspace=0.0, wspace=0.0)
@@ -48,12 +50,17 @@ class CityScapesDataset(Dataset):
     def preprocess_image(self, imagePath):
         raw, mask = self.split_image_pairs(imagePath)
         height, width, channels = mask.shape
-
+        
+        # L2 algorithm
         # compute then the sum of squared distances for each pixel to the colors (L2 between the color and pixel data) :
         # the value which will be the minimal is the category name we will use for that pixel, and we will get it using argmin
-        distances = np.sum((mask.reshape(-1, channels)[:, np.newaxis, :] - self.idTocolor) ** 2, axis=2)
+        distances = np.sum((mask.reshape(-1, channels)[:, np.newaxis, :] - idx_to_color) ** 2, axis=2)
         classes = np.argmin(distances, axis=1).reshape(height, width)
-
+        
+        # narrow classes
+        narrowClasses = np.vectorize(lambda idx: idx_to_category[idx])
+        classes = narrowClasses(classes)
+        
         return (raw, classes)
 
     def split_image_pairs(self, imagePairPath):
@@ -97,14 +104,14 @@ def get_loaders(
 
     val_ds = CityScapesDataset(
         imagesDir=val_dir,
-        transform=None,
+        transform=val_transform,
     )
-
+    
     val_loader = DataLoader(
         val_ds,
         batch_size=batch_size_train,
         pin_memory=pin_memory,
-        shuffle=True,
+        shuffle=False,
     )
 
     return train_loader, val_loader
