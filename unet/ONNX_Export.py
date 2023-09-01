@@ -1,9 +1,9 @@
 import torch.onnx
-from Trainer import get_model
+from Trainer import get_saved_model
 
 def export_to_onnx():
     
-    model = get_model()
+    model = get_saved_model()
     
     model.cpu()
     model.eval()
@@ -13,6 +13,9 @@ def export_to_onnx():
     torch_out = model(x)
 
 	# Export the model
-    torch.onnx.export(model, x, "segmentor.onnx", export_params=True, opset_version=11)
+    torch.onnx.export(model, x, "segmentor.onnx", verbose=True, export_params=True, opset_version=11)
  
     return
+
+if __name__ == '__main__':
+    export_to_onnx()

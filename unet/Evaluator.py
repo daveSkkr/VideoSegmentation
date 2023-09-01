@@ -30,6 +30,8 @@ def evaluate(model, imagesDirPath, input_transforms, input_transforms_inverse):
 	X = X.to(DEVICE)
 
 	Y_pred = model(X)
+	# output -> [batchsize, classes, x, y]
+	# argmax -> take pixel from best match among classes output
 	Y_pred = torch.argmax(Y_pred, dim=1)
 
 	fig, axes = plt.subplots(batchSize, 2, figsize=(10, 10))

@@ -1,27 +1,25 @@
+from collections import namedtuple
 import torch
 from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
 from NetModel import UNETScapes
 from CityScapesDataset  import get_loaders
-import numpy as np
-import os
 import matplotlib.pyplot as plt
 from torchvision import transforms
 import gc
 import os.path
-from PIL import Image
 from Utils import show_val_batch_predictions
 import torch.onnx
-import cv2
+from torchsummary import summary
 
 # Training config
 DEVICE = 'cuda' if torch.cuda.is_available() else'cpu'
 BATCH_SIZE_TRAIN = 8
 BATCH_SIZE_VAL = 9
-EPOCHS = 22
+EPOCHS = 1
 NUM_CLASSES = 8
-LEARNING_RATE = 0.00001
+LEARNING_RATE = 0.00005
 
 # Loader config
 TRAIN_IMG_DIR = r'./data/cityscapes_data/train'
@@ -55,17 +53,19 @@ def get_saved_model():
 def create_model():
     return UNETScapes(in_channels=3, out_channels=NUM_CLASSES, features=[64, 128, 256, 512]).to(DEVICE)
 
-def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
+def train(model, optimizer, loss_fn, scaler, epochs, train_loader, val_loader):
 
 	gc.collect()
 	torch.cuda.empty_cache()
 
-	step_losses = []
+	# Declaring namedtuple()
+	EpochLoss = namedtuple('Train', 'Validation')
 	epoch_losses = []
 
 	for epoch in tqdm(range(epochs)):
-		epoch_loss = 0
+		train_loss = 0
 
+		# training epoch
 		for X, Y in tqdm(train_loader, total=len(train_loader), leave=False):
 			X, Y = X.to(DEVICE), Y.to(DEVICE).long()
 			optimizer.zero_grad()
@@ -79,20 +79,43 @@ def train(model, optimizer, loss_fn, scaler, epochs, train_loader):
 
 			torch.cuda.empty_cache()
 
-			epoch_loss += loss.item()
-			step_losses.append(loss.item())
+			train_loss += loss.item()
+	
+		train_avg_loss = train_loss / len(train_loader)
+		print(f"Avg epoch train loss: {train_avg_loss}\n")
+   
+		# validation set epoch
+		validation_loss = 0
+		for X, Y in tqdm(val_loader, total = len(val_loader)):
+			X, Y = X.to(DEVICE), Y.to(DEVICE).long()
+   
+			with torch.cuda.amp.autocast():
+				predictions = model(X)
+				loss = loss_fn(predictions, Y)
 
-		print(f"Epoch loss: {epoch_loss}\n")
-		print(f"Avg epoch loss: {epoch_loss / len(train_loader)}\n")
-		epoch_losses.append(epoch_loss / len(train_loader))
+			validation_loss += loss.item()
+
+		validation_avg_loss = validation_loss / len(val_loader)
+		print(f"Avg validation set loss: {validation_avg_loss}\n")
+  
+		epoch_losses.append( 
+			EpochLoss(
+      			train_avg_loss, 
+				validation_avg_loss
+         		)
+		)
 
 	fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-	axes[0].plot(step_losses)
-	axes[1].plot(epoch_losses)
+	axes[0].plot([tl for tl in epoch_losses])
+	axes[1].plot([vl for vl in epoch_losses])
+ 
+	plt.show()
 
 def main():
 
 	model = create_model()
+
+	# summary(model, input_size=(3, 256, 256), batch_size=3, device=DEVICE )
 
 	optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 	loss_fn = nn.CrossEntropyLoss()
@@ -108,7 +131,7 @@ def main():
 		PIN_MEMORY,
 	)
 	
-	train(model, optimizer, loss_fn, scaler, EPOCHS, train_loader)
+	train(model, optimizer, loss_fn, scaler, EPOCHS, train_loader, val_loader)
 
 	torch.save(model.state_dict(), CHECKPOINT_PATH)
 

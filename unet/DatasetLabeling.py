@@ -83,8 +83,8 @@ idx_to_color = [np.asarray(label.color) for label in labels]
 
 # ACTUAL CATEGORIES - narrowed classes
 
-idx_to_category = {0 : 0, 1 : 0, 2 : 0, 3: 0, 4 : 0, 5 : 0, 6 : 0,  # "void", 
-                   7 : 1, 8 : 1, 9 : 1, 10 : 1, #"flat", 
+idx_to_category = {0 : 0, 1 : 0, 2 : 0, 3: 0, 4 : 0, 5 : 0,  # "void", 
+                   6 : 1, 7 : 1, 8 : 1, 9 : 1, 10 : 1, #"flat", 
                    11 : 2, 12 : 2, 13 : 2, 14 : 2, 15 : 2, 16 : 2, # construction
                    17 : 3, 18 : 3, 19 : 3, 20: 3, #object
                    21 : 4, 22 : 4, #nature
