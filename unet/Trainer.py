@@ -17,7 +17,7 @@ from torchsummary import summary
 DEVICE = 'cuda' if torch.cuda.is_available() else'cpu'
 BATCH_SIZE_TRAIN = 8
 BATCH_SIZE_VAL = 9
-EPOCHS = 1
+EPOCHS = 20
 NUM_CLASSES = 8
 LEARNING_RATE = 0.00005
 
@@ -59,7 +59,7 @@ def train(model, optimizer, loss_fn, scaler, epochs, train_loader, val_loader):
 	torch.cuda.empty_cache()
 
 	# Declaring namedtuple()
-	EpochLoss = namedtuple('Train', 'Validation')
+	EpochLoss = namedtuple('EpochLoss', 'Train Validation')
 	epoch_losses = []
 
 	for epoch in tqdm(range(epochs)):
@@ -106,8 +106,8 @@ def train(model, optimizer, loss_fn, scaler, epochs, train_loader, val_loader):
 		)
 
 	fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-	axes[0].plot([tl for tl in epoch_losses])
-	axes[1].plot([vl for vl in epoch_losses])
+	axes[0].plot([tl.Train for tl in epoch_losses])
+	axes[1].plot([vl.Validation for vl in epoch_losses])
  
 	plt.show()
 
