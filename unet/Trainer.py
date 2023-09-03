@@ -18,7 +18,7 @@ DEVICE = 'cuda' if torch.cuda.is_available() else'cpu'
 BATCH_SIZE_TRAIN = 8
 BATCH_SIZE_VAL = 9
 EPOCHS = 20
-NUM_CLASSES = 8
+NUM_CLASSES = 12
 LEARNING_RATE = 0.00005
 
 # Loader config
