@@ -1,8 +1,9 @@
 ﻿using System.Drawing;
 using System.Drawing.Imaging;
+using NumSharp;
 using SixLabors.ImageSharp.Formats.Bmp;
 
-public static class Extensions
+public static class BitmapExtensions
 {
 
     /// <summary>
