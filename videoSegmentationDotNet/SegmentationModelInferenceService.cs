@@ -42,7 +42,7 @@ namespace ConsoleApp1
             return segmentationMap;
         }
 
-        private Tensor<float> BitmapAsNetResizedInput(Bitmap imageSource)
+        public Tensor<float> BitmapAsNetResizedInput(Bitmap imageSource)
         {
             var image = SixLabors.ImageSharp.Image.Load<Rgb24>(imageSource.ToArray(ImageFormat.Bmp));
 

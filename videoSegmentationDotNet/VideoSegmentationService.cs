@@ -27,39 +27,39 @@ namespace ConsoleApp1
             this.mapIndexToColor = mapIndexToColor;
         }
 
-        public void SegmentizeVideo(string inputPath, string outputPath)
+        public void SegmentizeVideo(string inputPath, string outputPath, int maskFramesFreeze = 5)
         {
-            Bitmap laskmask = default;
+            Bitmap mask = default;
             var maskFpsCounter = 0;
 
-            using var vw = new VideoWriter(outputPath, 25, new System.Drawing.Size(1920, 1080), true);
-            using (var video = new VideoCapture(inputPath, API.Any, new Tuple<CapProp, int>(CapProp.Fps, 1)))
+            using var vw = new VideoWriter(outputPath, 30, new System.Drawing.Size(1920, 1080), true);
+            using (var video = new VideoCapture(inputPath, API.Any, new Tuple<CapProp, int>(CapProp.Fps, 30)))
             using (var mat = new Mat())
             while (video.Read(mat))
             {
+                maskFpsCounter++;
+
                 var bitmap = mat.ToBitmap();
+                var originalBitmapSize = (bitmap.Width, bitmap.Height);
 
                 var inputByteArray = mat.GetData();
                 var inputByteNumpy = NDArray.FromMultiDimArray<byte>(inputByteArray);
 
-                var originalBitmapSize = (bitmap.Width, bitmap.Height);
-
-                if (laskmask == default)
+                if (mask == default)
                 {
                     var outputBitmap = this.inferenceService.GetSegmentationMap(bitmap);
-                    laskmask = new Bitmap(
-                        NumpyToBitmap(outputBitmap),
+                    mask = new Bitmap(
+                        NumpyToBitmap(outputBitmap, alphaChannel: 140),
                         originalBitmapSize.Width,
                         originalBitmapSize.Height);
                 }
 
-                var maskedImage = CreateMaskedImage(laskmask, bitmap, originalBitmapSize);
+                var maskedImage = CreateMaskedImage(mask, bitmap, originalBitmapSize);
 
-                maskFpsCounter++;
-
-                if (maskFpsCounter >= 5)
+                // Reset current mask every given frames
+                if (maskFpsCounter >= maskFramesFreeze)
                 {
-                    laskmask = default;
+                    mask = default;
                     maskFpsCounter = 0;
                 }
 
@@ -86,20 +86,20 @@ namespace ConsoleApp1
             return result;
         }
 
-        private Bitmap NumpyToBitmap(NDArray array)
+        private Bitmap NumpyToBitmap(NDArray array, int alphaChannel)
         {
-            var w = array.shape[0];
-            var h = array.shape[1];
-            Bitmap pic = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+            var width = array.shape[0];
+            var height = array.shape[1];
 
-            for (int x = 0; x < w; x++)
+            Bitmap pic = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+
+            for (int x = 0; x < width; x++)
             {
-                for (int y = 0; y < h; y++)
+                for (int y = 0; y < height; y++)
                 {
                     var color = this.mapIndexToColor(array[x, y]);
-
-                    var c = System.Drawing.Color.FromArgb(140, color.R, color.G, color.B);
-
+                    var c = System.Drawing.Color.FromArgb(alphaChannel, color.R, color.G, color.B);
+                    
                     pic.SetPixel(y, x, c);
                 }
             }
