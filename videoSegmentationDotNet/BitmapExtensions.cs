@@ -5,13 +5,6 @@ using SixLabors.ImageSharp.Formats.Bmp;
 
 public static class BitmapExtensions
 {
-
-    /// <summary>
-    /// Converts the image data into a byte array.
-    /// </summary>
-    /// <param name="imageIn">The image to convert to an array</param>
-    /// <param name="fmt">The format to save the image in</param>
-    /// <returns>An array of bytes</returns>
     public static byte[] ToArray(this global::System.Drawing.Bitmap imageIn, ImageFormat fmt)
     {
         using (MemoryStream ms = new MemoryStream())

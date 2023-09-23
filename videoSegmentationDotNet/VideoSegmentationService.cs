@@ -12,14 +12,19 @@ using NumSharp;
 
 namespace ConsoleApp1
 {
-    public class VideoSementationService
+    public delegate (int R, int G, int B) MapIndexToColor(int classIndex);
+
+    public class VideoSegmentationService
     {
         private readonly ISegmentationModelInferenceService inferenceService;
+        private readonly MapIndexToColor mapIndexToColor;
 
-        public VideoSementationService(
-            ISegmentationModelInferenceService inferenceService)
+        public VideoSegmentationService(
+            ISegmentationModelInferenceService inferenceService,
+            MapIndexToColor mapIndexToColor)
         {
             this.inferenceService = inferenceService;
+            this.mapIndexToColor = mapIndexToColor;
         }
 
         public void SegmentizeVideo(string inputPath, string outputPath)
@@ -33,6 +38,10 @@ namespace ConsoleApp1
             while (video.Read(mat))
             {
                 var bitmap = mat.ToBitmap();
+
+                var inputByteArray = mat.GetData();
+                var inputByteNumpy = NDArray.FromMultiDimArray<byte>(inputByteArray);
+
                 var originalBitmapSize = (bitmap.Width, bitmap.Height);
 
                 if (laskmask == default)
@@ -44,21 +53,8 @@ namespace ConsoleApp1
                         originalBitmapSize.Height);
                 }
 
-                // Create masked image
-                var originalImage = bitmap;
-                Bitmap result = default;
-                using Image<Rgb24> imageReleaded = SixLabors.ImageSharp.Image.Load<Rgb24>(originalImage.ToArray(ImageFormat.Bmp));
-                using (Image<Rgba32> outputImage = new Image<Rgba32>(originalBitmapSize.Width, originalBitmapSize.Height))
-                {
-                    outputImage.Mutate(o => o
-                        .DrawImage(imageReleaded, new SixLabors.ImageSharp.Point(0, 0), 1f)
-                        .DrawImage(
-                            SixLabors.ImageSharp.Image.Load(laskmask.ToArray(ImageFormat.Bmp)), 
-                            new SixLabors.ImageSharp.Point(0, 0), 1f)
-                    );
+                var maskedImage = CreateMaskedImage(laskmask, bitmap, originalBitmapSize);
 
-                    result = outputImage.ToBitmap();
-                };
                 maskFpsCounter++;
 
                 if (maskFpsCounter >= 5)
@@ -67,23 +63,40 @@ namespace ConsoleApp1
                     maskFpsCounter = 0;
                 }
 
-                vw.Write(result.ToMat());
+                vw.Write(maskedImage.ToMat());
             }
+        }
 
+        private Bitmap CreateMaskedImage(Bitmap laskmask, Bitmap originalImage, (int Width, int Height) originalBitmapSize)
+        {
+            Bitmap result = default;
+            var imageReleaded = SixLabors.ImageSharp.Image.Load<Rgb24>(originalImage.ToArray(ImageFormat.Bmp));
+            using (Image<Rgba32> outputImage = new Image<Rgba32>(originalBitmapSize.Width, originalBitmapSize.Height))
+            {
+                outputImage.Mutate(o => o
+                    .DrawImage(imageReleaded, new SixLabors.ImageSharp.Point(0, 0), 1f)
+                    .DrawImage(
+                        SixLabors.ImageSharp.Image.Load(laskmask.ToArray(ImageFormat.Bmp)),
+                        new SixLabors.ImageSharp.Point(0, 0), 1f)
+                );
 
+                result = outputImage.ToBitmap();
+            };
+
+            return result;
         }
 
         private Bitmap NumpyToBitmap(NDArray array)
         {
-            var w = 256;
-            var h = 256;
-            Bitmap pic = new Bitmap(256, 256, PixelFormat.Format32bppArgb);
+            var w = array.shape[0];
+            var h = array.shape[1];
+            Bitmap pic = new Bitmap(w, h, PixelFormat.Format32bppArgb);
 
             for (int x = 0; x < w; x++)
             {
                 for (int y = 0; y < h; y++)
                 {
-                    var color = MapIndexToColor(array[x, y]);
+                    var color = this.mapIndexToColor(array[x, y]);
 
                     var c = System.Drawing.Color.FromArgb(140, color.R, color.G, color.B);
 
@@ -92,21 +105,6 @@ namespace ConsoleApp1
             }
 
             return pic;
-        }
-
-        private (int R, int G, int B) MapIndexToColor(int classIndex)
-        {
-            return classIndex switch
-            {
-                1 => (128, 64, 128),
-                2 => (70, 70, 70),
-                3 => (153, 153, 153),
-                4 => (107, 142, 35),
-                5 => (70, 130, 180),
-                6 => (220, 20, 60),
-                7 => (0, 0, 142),
-                _ => (0, 0, 0)
-            };
         }
     }
 }

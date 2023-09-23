@@ -21,17 +21,15 @@ MapIndexToColor mapIndexToColor = (classIndex) =>
 
 using var session = new SegmentationModelInferenceService(
     new InferenceExpectedInputMetadata(
-        modelPath, 
-        "input.1", 
+        modelPath,
+        "input.1",
         3,
-        meanForChannels: new[] { 0.485f, 0.456f, 0.406f },
-        stdForChannels: new[] { 0.229f, 0.224f, 0.225f },
-        imageDimensions: (Width: 256, Height: 256)));
+        MeanForChannels: new[] { 0.485f, 0.456f, 0.406f },
+        StdForChannels: new[] { 0.229f, 0.224f, 0.225f },
+        ImageDimensions: (Width: 256, Height: 256)));
 
-var videoSegmentationService = new VideoSementationService(session, mapIndexToColor);
+var videoSegmentationService = new VideoSegmentationService(session, mapIndexToColor);
 
 videoSegmentationService.SegmentizeVideo(inputVideoPath, outputVideoPath);
-    
+
 Console.ReadLine();
-
-

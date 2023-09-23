@@ -12,39 +12,12 @@ using System.Threading.Tasks;
 
 namespace ConsoleApp1
 {
-    public class InferenceExpectedInputMetadata
+    public interface ISegmentationModelInferenceService : IDisposable
     {
-        public string ModelPath { get; set; }
-        public string InputName { get; set; }
-        public int Channels { get; set; }
-        public float[] MeanForChannels { get; }
-        public float[] StdForChannels { get; }
-        public (int Width, int Height) ImageDimensions { get; set; }
-
-        public InferenceExpectedInputMetadata(
-            string modelPath,
-            string inputName, 
-            int channels, 
-            float[] meanForChannels,
-            float[] stdForChannels,
-            (int Width, int Height) imageDimensions)
-        {
-            ModelPath = modelPath;
-            InputName = inputName;
-            Channels = channels;
-            MeanForChannels = meanForChannels;
-            StdForChannels = stdForChannels;
-            ImageDimensions = imageDimensions;
-        }
-    }
-
-    public interface ISegmentationModelInferenceService
-    {
-        void Dispose();
         NDArray GetSegmentationMap(Bitmap bmpImg);
     }
 
-    public class SegmentationModelInferenceService : IDisposable, ISegmentationModelInferenceService
+    public class SegmentationModelInferenceService : ISegmentationModelInferenceService
     {
         private readonly InferenceSession inferenceSession;
         private readonly InferenceExpectedInputMetadata metadata;
