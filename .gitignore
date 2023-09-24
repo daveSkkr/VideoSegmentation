@@ -20,8 +20,9 @@ project.lock.json
 .DS_Store
 *.pyc
 
-# Visual Studio Code
+# Visual Studio
 .vscode
+.vs/
 
 # User-specific files
 *.suo
