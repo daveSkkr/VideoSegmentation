@@ -6,5 +6,5 @@
         int Channels,
         float[] MeanForChannels,
         float[] StdForChannels,
-        (int Width, int Height) ImageDimensions);
+        (int Width, int Height) ModelExpectedImageDimensions);
 }

@@ -1,20 +1,13 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using NumSharp;
-using SixLabors.ImageSharp.Processing;
-using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Imaging;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ConsoleApp1
 {
     public interface ISegmentationModelInferenceService : IDisposable
     {
-        NDArray GetSegmentationMap(Bitmap bmpImg);
+        NDArray GetSegmentationMap(Image<Rgb24> image);
     }
 
     public class SegmentationModelInferenceService : ISegmentationModelInferenceService
@@ -28,28 +21,24 @@ namespace ConsoleApp1
             this.inferenceSession = new InferenceSession(metadata.ModelPath);
         }
 
-        public NDArray GetSegmentationMap(Bitmap bmpImg)
+        public NDArray GetSegmentationMap(Image<Rgb24> image)
         {
-            var input = new List<NamedOnnxValue>() { NamedOnnxValue.CreateFromTensor(metadata.InputName, BitmapAsNetResizedInput(bmpImg)) };
+            var input = new List<NamedOnnxValue>() { NamedOnnxValue.CreateFromTensor(metadata.InputName, BitmapAsNetResizedInput(image)) };
 
             var outputTensor = this.inferenceSession.Run(input).First().AsTensor<float>();
-
             var outputNumpy = np.array(outputTensor.AsEnumerable())
                 .reshape(new Shape(outputTensor.Dimensions.ToArray(), outputTensor.Strides.ToArray()));
-
             var segmentationMap = np.argmax(outputNumpy, 1)[0];
 
             return segmentationMap;
         }
 
-        public Tensor<float> BitmapAsNetResizedInput(Bitmap imageSource)
+        public Tensor<float> BitmapAsNetResizedInput(Image<Rgb24> image)
         {
-            var image = SixLabors.ImageSharp.Image.Load<Rgb24>(imageSource.ToArray(ImageFormat.Bmp));
-
-            image.Mutate(x => x.Resize(this.metadata.ImageDimensions.Width, this.metadata.ImageDimensions.Height));
+            image.Mutate(x => x.Resize(this.metadata.ModelExpectedImageDimensions.Width, this.metadata.ModelExpectedImageDimensions.Height));
 
             Tensor<float> input = new DenseTensor<float>(
-                new[] { 1, this.metadata.Channels, this.metadata.ImageDimensions.Width, this.metadata.ImageDimensions.Height });
+                new[] { 1, this.metadata.Channels, this.metadata.ModelExpectedImageDimensions.Height, this.metadata.ModelExpectedImageDimensions.Width });
 
             var mean = this.metadata.MeanForChannels;
             var stddev = this.metadata.StdForChannels;
