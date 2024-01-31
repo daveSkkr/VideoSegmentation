@@ -19,4 +19,4 @@ RUN dotnet publish "ApiProcesser.csproj" -c Release -o /app/publish /p:UseAppHos
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "ApiProcesser.dll", "--server.urls", "https://+:1000"]
+ENTRYPOINT ["dotnet", "ApiProcesser.dll", "--server.urls", "https://0.0.0.0:1000"]
