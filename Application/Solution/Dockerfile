@@ -2,8 +2,7 @@
 
 FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
 WORKDIR /app
-EXPOSE 80
-EXPOSE 443
+EXPOSE 1000
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
@@ -20,4 +19,4 @@ RUN dotnet publish "ApiProcesser.csproj" -c Release -o /app/publish /p:UseAppHos
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "ApiProcesser.dll"]
+ENTRYPOINT ["dotnet", "ApiProcesser.dll", "--server.urls", "https://+:1000"]
