@@ -3,7 +3,7 @@
 FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
 ENV ASPNETCORE_URLS=http://0.0.0.0:10000
 WORKDIR /app
-EXPOSE 1000
+EXPOSE 10000
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
@@ -20,4 +20,4 @@ RUN dotnet publish "ApiProcesser.csproj" -c Release -o /app/publish /p:UseAppHos
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "ApiProcesser.dll", "--server.urls", "https://0.0.0.0:1000"]
+ENTRYPOINT ["dotnet", "ApiProcesser.dll", "--server.urls", "https://0.0.0.0:10000"]
