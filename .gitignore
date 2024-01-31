@@ -9,13 +9,9 @@ react_client/
 bin/
 
 *.tar
-*.onnx
 *.mp4
 *.pyc
 *.cfg
-segmentor.onnx
-*.onnx
-segmentor.*
 
 *.swp
 *.*~
