@@ -35,27 +35,30 @@ namespace ConsoleApp1
 
         public Tensor<float> BitmapAsNetResizedInput(Image<Rgb24> image)
         {
-            image.Mutate(x => x.Resize(this.metadata.ModelExpectedImageDimensions.Width, this.metadata.ModelExpectedImageDimensions.Height));
-
             Tensor<float> input = new DenseTensor<float>(
                 new[] { 1, this.metadata.Channels, this.metadata.ModelExpectedImageDimensions.Height, this.metadata.ModelExpectedImageDimensions.Width });
-
-            var mean = this.metadata.MeanForChannels;
-            var stddev = this.metadata.StdForChannels;
-
-            image.ProcessPixelRows(accessor =>
+            
+            using (var imageCopy = image.Clone())
             {
-                for (int y = 0; y < accessor.Height; y++)
+                imageCopy.Mutate(x => x.Resize(this.metadata.ModelExpectedImageDimensions.Width, this.metadata.ModelExpectedImageDimensions.Height));
+
+                var mean = this.metadata.MeanForChannels;
+                var stddev = this.metadata.StdForChannels;
+
+                imageCopy.ProcessPixelRows(accessor =>
                 {
-                    Span<Rgb24> pixelSpan = accessor.GetRowSpan(y);
-                    for (int x = 0; x < accessor.Width; x++)
+                    for (int y = 0; y < accessor.Height; y++)
                     {
-                        input[0, 0, y, x] = ((pixelSpan[x].R / 255f) - mean[0]) / stddev[0];
-                        input[0, 1, y, x] = ((pixelSpan[x].G / 255f) - mean[1]) / stddev[1];
-                        input[0, 2, y, x] = ((pixelSpan[x].B / 255f) - mean[2]) / stddev[2];
+                        Span<Rgb24> pixelSpan = accessor.GetRowSpan(y);
+                        for (int x = 0; x < accessor.Width; x++)
+                        {
+                            input[0, 0, y, x] = ((pixelSpan[x].R / 255f) - mean[0]) / stddev[0];
+                            input[0, 1, y, x] = ((pixelSpan[x].G / 255f) - mean[1]) / stddev[1];
+                            input[0, 2, y, x] = ((pixelSpan[x].B / 255f) - mean[2]) / stddev[2];
+                        }
                     }
-                }
-            });
+                });
+            }
 
             return input;
         }

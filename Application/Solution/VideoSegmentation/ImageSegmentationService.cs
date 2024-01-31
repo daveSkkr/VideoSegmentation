@@ -17,11 +17,10 @@ namespace ConsoleApp1
             this.mapIndexToColor = mapIndexToColor;
         }
 
-        public Image<Rgb24> CreateSegmentationMapFor(Image<Rgb24> image)
+        public Image<Rgba32> CreateSegmentationMapFor(Image<Rgb24> image)
         {
             var (width, height) = (image.Width, image.Height);
-            var output = NumpyToImage(
-                this.inferenceService.GetSegmentationMap(image), alphaChannel: 140);
+            var output = NumpyToImage(this.inferenceService.GetSegmentationMap(image), alphaChannel: 140);
 
             output.Mutate(mutate => mutate.Resize(width, height));
 
@@ -33,23 +32,23 @@ namespace ConsoleApp1
             inferenceService.Dispose();
         }
 
-        private Image<Rgb24> NumpyToImage(NDArray array, int alphaChannel)
+        private Image<Rgba32> NumpyToImage(NDArray array, int alphaChannel)
         {
             var width = array.shape[0];
             var height = array.shape[1];
 
-            var image = new Image <Rgb24>(width, height);
+            var image = new Image<Rgba32>(width, height);
 
             image.ProcessPixelRows(accessor =>
             {
                 for (int y = 0; y < accessor.Height; y++)
                 {
-                    Span<Rgb24> pixelSpan = accessor.GetRowSpan(y);
+                    Span<Rgba32> pixelSpan = accessor.GetRowSpan(y);
                     for (int x = 0; x < accessor.Width; x++)
                     {
                         var color = this.mapIndexToColor(array[y, x]);
 
-                        pixelSpan[x] = new Rgb24((byte)color.R, (byte)color.G, (byte)color.B);
+                        pixelSpan[x] = new Rgba32((byte)color.R, (byte)color.G, (byte)color.B, (byte) 200);
                     }
                 }
             });

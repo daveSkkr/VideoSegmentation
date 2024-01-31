@@ -1,9 +1,9 @@
 #See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
 FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
-ENV ASPNETCORE_URLS=http://0.0.0.0:10000
 WORKDIR /app
-EXPOSE 10000
+EXPOSE 80
+EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
@@ -20,4 +20,4 @@ RUN dotnet publish "ApiProcesser.csproj" -c Release -o /app/publish /p:UseAppHos
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "ApiProcesser.dll", "--server.urls", "https://0.0.0.0:10000"]
+ENTRYPOINT ["dotnet", "ApiProcesser.dll"]
