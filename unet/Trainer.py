@@ -12,6 +12,7 @@ import os.path
 from Utils import show_val_batch_predictions
 import torch.onnx
 from torchsummary import summary
+import onnx
 
 # Training config
 DEVICE = 'cuda' if torch.cuda.is_available() else'cpu'
@@ -41,17 +42,9 @@ INPUT_VAL_TRANSFORMS_INVERSE = transforms.Compose([
 			transforms.Normalize((-0.485/0.229, -0.456/0.224, -0.406/0.225), (1/0.229, 1/0.224, 1/0.225))
 			])
      
-def get_saved_model():
-    # x classes = x channels
-    model = create_model()
-
-    model.load_state_dict(torch.load(CHECKPOINT_PATH))
-    model.eval()
-    
-    return model
-
-def create_model():
-    return UNETScapes(in_channels=3, out_channels=NUM_CLASSES, features=[64, 128, 256, 512]).to(DEVICE)
+def get_saved_model() -> UNETScapes:
+	onnx_model = onnx.load("fashion_mnist_model.onnx")
+	onnx.checker.check_model(onnx_model)
 
 def train(model, optimizer, loss_fn, scaler, epochs, train_loader, val_loader):
 

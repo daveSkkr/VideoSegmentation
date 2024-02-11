@@ -20,7 +20,8 @@ namespace ConsoleApp1
         public Image<Rgba32> CreateSegmentationMapFor(Image<Rgb24> image)
         {
             var (width, height) = (image.Width, image.Height);
-            var output = NumpyToImage(this.inferenceService.GetSegmentationMap(image), alphaChannel: 140);
+            var segmentationMap = this.inferenceService.GetSegmentationMap(image);
+            var output = NumpyToImage(segmentationMap, alphaChannel: 140);
 
             output.Mutate(mutate => mutate.Resize(width, height));
 

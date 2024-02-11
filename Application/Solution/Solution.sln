@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApiProcesser", "ApiProcesse
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoSegmentation", "VideoSegmentation\VideoSegmentation.csproj", "{4B6176CA-DD9C-41E0-AA13-19A58B9F5276}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp1", "ConsoleApp1\ConsoleApp1.csproj", "{81E36796-46E8-46BE-86B2-2393A812D5BC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{4B6176CA-DD9C-41E0-AA13-19A58B9F5276}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4B6176CA-DD9C-41E0-AA13-19A58B9F5276}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4B6176CA-DD9C-41E0-AA13-19A58B9F5276}.Release|Any CPU.Build.0 = Release|Any CPU
+		{81E36796-46E8-46BE-86B2-2393A812D5BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{81E36796-46E8-46BE-86B2-2393A812D5BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{81E36796-46E8-46BE-86B2-2393A812D5BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{81E36796-46E8-46BE-86B2-2393A812D5BC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -42,9 +42,12 @@ namespace ApiProcesser.Controllers
         }
 
         [HttpPost("ProcessApplyingMask")]
-        public IActionResult ProcessApplyingMask(ImageToProcess imageToProcess)
+        public async IAsyncEnumerable<byte[]> ProcessApplyingMask(ImageToProcess imageToProcess, CancellationToken cancellationToken)
         {
             byte[] result;
+
+            var sw = new Stopwatch();
+            sw.Start();
 
             using (var image = SixLabors.ImageSharp.Image.Load<Rgb24>(Convert.FromBase64String(imageToProcess.PayloadBase64)))
             using (var segmentationMap = imageSegmentationService.CreateSegmentationMapFor(image))
@@ -57,7 +60,14 @@ namespace ApiProcesser.Controllers
                 }
             }
 
-            return Ok(result);
+            sw.Stop();
+
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                yield return result;
+                await Task.Delay(1000);
+            }
         }
 
         private Image<Rgb24> CreateMaskedImage(Image<Rgba32> landMask, Image<Rgb24> originalImage)
